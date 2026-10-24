@@ -10,6 +10,7 @@ from collections.abc import Sequence
 
 from .config import ConfigError, Settings
 from .graph import run_research
+from .publish import StatusPublisher
 
 LOGGER = logging.getLogger("research_agent")
 
@@ -89,18 +90,36 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"error: {exc}", file=sys.stderr)
         return 2
 
+    publisher = StatusPublisher.from_env(
+        topic=settings.topic,
+        model=settings.model,
+        max_iterations=settings.max_iterations,
+    )
+    if publisher is not None:
+        publisher.publish(force=True)
+
     try:
-        result = run_research(settings)
+        if publisher is not None:
+            result = run_research(settings, event_sink=publisher.apply_event)
+        else:
+            result = run_research(settings)
     except KeyboardInterrupt:
+        if publisher is not None:
+            publisher.fail("interrupted")
         print("error: interrupted", file=sys.stderr)
         return 130
     except Exception as exc:  # noqa: BLE001 - CLI boundary
+        if publisher is not None:
+            publisher.fail(exc)
         if args.verbose:
             LOGGER.exception("Agent run failed")
         else:
             LOGGER.error("Agent run failed: %s", exc)
         print(f"error: agent run failed: {exc}", file=sys.stderr)
         return 3
+
+    if publisher is not None:
+        publisher.succeed(result)
 
     if args.json:
         print(json.dumps(result.to_dict(), ensure_ascii=False))

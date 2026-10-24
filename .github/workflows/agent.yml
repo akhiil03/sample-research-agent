@@ -18,6 +18,10 @@ on:
         description: "Research/critique rounds (1-5)"
         required: false
         default: "2"
+      run_id:
+        description: "Status id used by the Pages UI (leave empty for manual runs)"
+        required: false
+        default: ""
   schedule:
     - cron: "0 13 * * 1"
 
@@ -126,6 +130,9 @@ jobs:
           AGENT_MODEL: ${{ inputs.model || vars.DIGEST_MODEL || 'gemini-3.5-flash-lite' }}
           TOPIC: ${{ inputs.topic || vars.DIGEST_TOPIC || 'AI agent frameworks' }}
           MAX_ITERATIONS: ${{ inputs.max_iterations || '2' }}
+          STATUS_RUN_ID: ${{ inputs.run_id }}
+          STATUS_BRANCH: status
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           uv run --frozen research-agent "$TOPIC" \
             --model "$AGENT_MODEL" \

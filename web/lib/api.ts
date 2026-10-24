@@ -1,17 +1,11 @@
-﻿import type { Health, ResearchRun, RunSummary, StartRunPayload } from "./types";
+﻿import { ApiError } from "./errors";
+import { GITHUB_MODE, githubApi } from "./github";
+import type { Health, ResearchRun, RunSummary, StartRunPayload } from "./types";
+
+export { ApiError };
 
 const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
 const BASE_URL = (configuredUrl ? configuredUrl : "http://localhost:8000").replace(/\/$/, "");
-
-export class ApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
-    super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   let response: Response;
@@ -39,7 +33,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T;
 }
 
-export const api = {
+const localApi = {
   baseUrl: BASE_URL,
   health: () => request<Health>("/api/health"),
   startRun: (payload: StartRunPayload) =>
@@ -47,6 +41,8 @@ export const api = {
   getRun: (id: string) => request<ResearchRun>(`/api/runs/${id}`),
   listRuns: (limit = 12) => request<{ runs: RunSummary[] }>(`/api/runs?limit=${limit}`),
 };
+
+export const api = GITHUB_MODE ? githubApi : localApi;
 
 export function formatElapsed(seconds: number): string {
   const total = Math.max(0, Math.round(seconds));
@@ -75,4 +71,3 @@ export function hostnameOf(url: string): string {
     return url;
   }
 }
-

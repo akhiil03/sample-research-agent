@@ -5,10 +5,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AgentFace } from "@/components/AgentFace";
 import { AgentNodeMap } from "@/components/AgentNodeMap";
 import { DigestView } from "@/components/DigestView";
+import { GitHubPanel } from "@/components/GitHubPanel";
 import { RecentRuns } from "@/components/RecentRuns";
 import { ResearchForm } from "@/components/ResearchForm";
 import { RunProgress } from "@/components/RunProgress";
 import { api, ApiError } from "@/lib/api";
+import { GITHUB_MODE } from "@/lib/github";
 import type { Health, ResearchRun, RunSummary, StartRunPayload } from "@/lib/types";
 
 function errorMessage(error: unknown): string {
@@ -299,6 +301,7 @@ export default function Home() {
             busy={busy}
             onSubmit={handleStart}
           />
+          {GITHUB_MODE ? <GitHubPanel /> : null}
           <RecentRuns
             runs={runs}
             activeId={run?.id ?? null}
