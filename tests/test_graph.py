@@ -1,7 +1,11 @@
 from __future__ import annotations
 
 from langchain_core.messages import AIMessage
-from tests.helpers import (
+
+from research_agent.config import Settings
+from research_agent.graph import build_checkpointer, build_graph, run_research
+
+from .helpers import (
     STUB_TOOLS,
     critique_message,
     digest_message,
@@ -10,9 +14,6 @@ from tests.helpers import (
     summary_message,
     tool_call_message,
 )
-
-from research_agent.config import Settings
-from research_agent.graph import build_checkpointer, build_graph, run_research
 
 
 def _settings(tmp_path, **overrides):
