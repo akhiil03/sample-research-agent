@@ -1,0 +1,53 @@
+[project]
+name = "sample-research-agent"
+version = "0.1.0"
+description = "A self-critiquing research and digest agent built with LangGraph, hosted on GitHub Actions."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+dependencies = [
+    "ddgs>=9.0,<10",
+    "httpx>=0.28,<0.29",
+    "langchain>=1.4,<2",
+    "langchain-openrouter>=0.2.9,<0.3",
+    "langgraph>=1.2,<2",
+    "langgraph-checkpoint-sqlite>=3.1",
+    "python-dotenv>=1.2,<2",
+    "trafilatura>=2.3,<3",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.4,<9",
+    "pytest-cov>=6,<7",
+    "ruff>=0.17,<0.18",
+]
+
+[project.scripts]
+research-agent = "research_agent.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/research_agent"]
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
+pythonpath = ["."]
+markers = [
+    "network: tests that hit the public internet (skipped by default)",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
+
+[tool.coverage.run]
+source = ["research_agent"]

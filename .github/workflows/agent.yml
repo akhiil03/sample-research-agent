@@ -1,0 +1,132 @@
+name: research-digest
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      topic:
+        description: "Topic to research"
+        required: false
+        default: ""
+      model:
+        description: "OpenRouter model id (empty = repo variable or openrouter/free)"
+        required: false
+        default: ""
+      max_iterations:
+        description: "Research/critique rounds (1-5)"
+        required: false
+        default: "2"
+  schedule:
+    - cron: "0 13 * * 1"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: research-digest-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  PYTHON_VERSION: "3.12"
+  UV_VERSION: "0.11.29"
+
+jobs:
+  test:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --extra dev --python ${{ env.PYTHON_VERSION }}
+
+      - name: Lint
+        run: uv run --frozen ruff check .
+
+      - name: Check formatting
+        run: uv run --frozen ruff format --check .
+
+      - name: Test
+        run: uv run --frozen pytest -q
+        env:
+          AGENT_FAKE_MODEL: "1"
+
+  digest:
+    name: Generate digest
+    needs: test
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    concurrency:
+      group: research-digest-write
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          version: ${{ env.UV_VERSION }}
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+
+      - name: Install dependencies
+        run: uv sync --frozen --python ${{ env.PYTHON_VERSION }}
+
+      - name: Check for API key
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+        run: |
+          if [ -z "$OPENROUTER_API_KEY" ]; then
+            echo "::error::OPENROUTER_API_KEY is not configured. Add it under Settings > Secrets and variables > Actions."
+            exit 1
+          fi
+
+      - name: Run agent
+        env:
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENROUTER_APP_TITLE: ${{ github.repository }}
+          AGENT_MODEL: ${{ inputs.model || vars.DIGEST_MODEL || 'openrouter/free' }}
+          TOPIC: ${{ inputs.topic || vars.DIGEST_TOPIC || 'AI agent frameworks' }}
+          MAX_ITERATIONS: ${{ inputs.max_iterations || '2' }}
+        run: |
+          uv run --frozen research-agent "$TOPIC" \
+            --model "$AGENT_MODEL" \
+            --max-iterations "$MAX_ITERATIONS" \
+            --checkpointer sqlite \
+            --out reports \
+            --verbose
+
+      - name: Upload digest artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: digest-${{ github.run_id }}
+          path: reports/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Commit digest
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add reports
+          if git diff --cached --quiet; then
+            echo "No digest changes to commit."
+            exit 0
+          fi
+          git commit -m "docs: research digest [skip ci]"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
