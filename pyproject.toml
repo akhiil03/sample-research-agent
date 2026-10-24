@@ -9,6 +9,7 @@ dependencies = [
     "ddgs>=9.0,<10",
     "httpx>=0.28,<0.29",
     "langchain>=1.4,<2",
+    "langchain-google-genai>=4.4.2",
     "langchain-openrouter>=0.2.9,<0.3",
     "langgraph>=1.2,<2",
     "langgraph-checkpoint-sqlite>=3.1",
@@ -17,10 +18,16 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+api = [
+    "fastapi>=0.120,<1",
+    "uvicorn[standard]>=0.38,<1",
+]
 dev = [
+    "fastapi>=0.120,<1",
     "pytest>=8.4,<9",
     "pytest-cov>=6,<7",
     "ruff>=0.17,<0.18",
+    "uvicorn[standard]>=0.38,<1",
 ]
 
 [project.scripts]

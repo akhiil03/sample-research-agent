@@ -25,7 +25,7 @@ def _settings(tmp_path, **overrides):
     return Settings(**defaults)
 
 
-def test_graph_caps_tool_turns(tmp_path):
+def test_graph_caps_tool_turns_and_emits_events(tmp_path):
     model = scripted(
         plan_message(["loop query"]),
         tool_call_message(("web_search", {"query": "loop query"})),
@@ -33,14 +33,27 @@ def test_graph_caps_tool_turns(tmp_path):
         critique_message(sufficient=True),
         digest_message(),
     )
+    events = []
 
     result = run_research(
         _settings(tmp_path),
         llm=model,
         tools=STUB_TOOLS,
         max_tool_turns=2,
+        event_sink=events.append,
     )
 
     assert model.cursor == 5
     assert result.rounds == 1
     assert result.output_path
+
+    stages = [event["stage"] for event in events]
+    assert stages[:2] == ["plan", "research"]
+    assert "tools" in stages
+    assert stages[-1] == "save"
+    plan_event = events[0]
+    assert plan_event["status"] == "complete"
+    assert plan_event["queries"] == ["loop query"]
+    save_event = events[-1]
+    assert save_event["output_path"] == result.output_path
+    assert save_event["sources"] == len(result.sources)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Sequence
 from typing import Any
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
@@ -10,6 +11,7 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import BaseTool, tool
+from pydantic import Field
 
 
 class ScriptedModel(BaseChatModel):
@@ -46,6 +48,40 @@ def scripted(*responses: AIMessage) -> ScriptedModel:
     return ScriptedModel(responses=list(responses))
 
 
+class _StructuredChain:
+    """Minimal stand-in for a with_structured_output chain."""
+
+    def __init__(self, model: StructuredModel, schema: Any, include_raw: bool):
+        self._model = model
+        self._schema = schema
+        self._include_raw = include_raw
+
+    def invoke(self, messages: Sequence[BaseMessage], **kwargs: Any) -> Any:
+        del kwargs
+        response = self._model.invoke(list(messages))
+        parsed = self._schema.model_validate_json(response.content)
+        if self._include_raw:
+            return {"raw": response, "parsed": parsed, "parsing_error": None}
+        return parsed
+
+
+class StructuredModel(ScriptedModel):
+    """ScriptedModel that also honors with_structured_output like real providers."""
+
+    structured_schemas: list[str] = Field(default_factory=list)
+
+    def with_structured_output(
+        self, schema: Any, include_raw: bool = False, **kwargs: Any
+    ) -> _StructuredChain:
+        del kwargs
+        self.structured_schemas.append(getattr(schema, "__name__", str(schema)))
+        return _StructuredChain(self, schema, include_raw)
+
+
+def structured(*responses: AIMessage) -> StructuredModel:
+    return StructuredModel(responses=list(responses))
+
+
 def plan_message(queries: list[str] | None = None) -> AIMessage:
     queries = queries or ["test topic overview"]
     return AIMessage(
@@ -80,6 +116,22 @@ def critique_message(sufficient: bool = True, follow_ups: list[str] | None = Non
                 "gaps": [] if sufficient else ["more evidence needed"],
                 "follow_up_queries": follow_ups or [],
                 "reason": "scripted critique",
+            }
+        )
+    )
+
+
+def verdict_message(
+    verdict: str = "pass",
+    claims: list[str] | None = None,
+    issues: list[str] | None = None,
+) -> AIMessage:
+    return AIMessage(
+        content=json.dumps(
+            {
+                "verdict": verdict,
+                "unsupported_claims": claims or [],
+                "citation_issues": issues or [],
             }
         )
     )

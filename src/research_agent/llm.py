@@ -1,4 +1,4 @@
-"""Chat model factories: OpenRouter for real runs, a scripted model for offline demos."""
+"""Chat model factories: Google Gemini (free tier) or OpenRouter, plus a scripted offline model."""
 
 from __future__ import annotations
 
@@ -8,13 +8,22 @@ from langchain_core.callbacks import CallbackManagerForLLMRun
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, BaseMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_openrouter import ChatOpenRouter
 
 from .config import Settings
 
 
 def build_llm(settings: Settings) -> BaseChatModel:
-    """Create the OpenRouter chat model used by every node in the graph."""
+    """Create the chat model used by every node in the graph."""
+    if settings.provider == "google":
+        return ChatGoogleGenerativeAI(
+            model=settings.model,
+            google_api_key=settings.api_key or None,
+            temperature=0.2,
+            max_output_tokens=4096,
+            max_retries=2,
+        )
     return ChatOpenRouter(
         model=settings.model,
         api_key=settings.api_key,

@@ -10,7 +10,8 @@ from research_agent.cli import main
 def test_cli_offline_run_writes_report(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setenv("AGENT_FAKE_MODEL", "1")
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY", "AGENT_PROVIDER"):
+        monkeypatch.delenv(name, raising=False)
     out = tmp_path / "reports"
 
     code = main(["offline topic", "--out", str(out), "--json"])
@@ -27,13 +28,14 @@ def test_cli_offline_run_writes_report(tmp_path, monkeypatch, capsys):
 def test_cli_requires_api_key_without_offline_mode(tmp_path, monkeypatch, capsys):
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("AGENT_FAKE_MODEL", raising=False)
-    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    for name in ("GEMINI_API_KEY", "GOOGLE_API_KEY", "OPENROUTER_API_KEY", "AGENT_PROVIDER"):
+        monkeypatch.delenv(name, raising=False)
 
     code = main(["some topic", "--out", str(tmp_path / "reports")])
 
     captured = capsys.readouterr()
     assert code == 2
-    assert "OPENROUTER_API_KEY" in captured.err
+    assert "GEMINI_API_KEY" in captured.err
 
 
 def test_cli_rejects_out_of_range_iterations(tmp_path, monkeypatch, capsys):

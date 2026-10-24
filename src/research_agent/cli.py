@@ -25,7 +25,7 @@ def build_parser() -> argparse.ArgumentParser:
         "-m",
         "--model",
         default=None,
-        help="OpenRouter model id (default: $AGENT_MODEL or openrouter/free)",
+        help="Gemini or OpenRouter model id (default: $AGENT_MODEL or provider's free default)",
     )
     parser.add_argument(
         "--max-iterations",

@@ -8,7 +8,10 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-DEFAULT_MODEL = "openrouter/free"
+DEFAULT_GOOGLE_MODEL = "gemini-3.5-flash-lite"
+DEFAULT_OPENROUTER_MODEL = "openrouter/free"
+DEFAULT_MODEL = DEFAULT_GOOGLE_MODEL
+PROVIDERS = ("google", "openrouter")
 DEFAULT_MAX_ITERATIONS = 2
 DEFAULT_MAX_STEPS = 40
 MAX_ITERATIONS_LIMIT = 5
@@ -38,6 +41,7 @@ class Settings:
 
     topic: str
     model: str = DEFAULT_MODEL
+    provider: str = "google"
     api_key: str = field(default="", repr=False)
     max_iterations: int = DEFAULT_MAX_ITERATIONS
     max_steps: int = DEFAULT_MAX_STEPS
@@ -57,6 +61,7 @@ class Settings:
         cls,
         topic: str,
         *,
+        provider: str | None = None,
         model: str | None = None,
         max_iterations: int | None = None,
         max_steps: int | None = None,
@@ -76,12 +81,27 @@ class Settings:
             raise ConfigError("Topic must not be empty.")
 
         fake_model = _env_flag("AGENT_FAKE_MODEL")
-        api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
-        selected_model = (model or os.getenv("AGENT_MODEL") or DEFAULT_MODEL).strip()
+        selected_provider = (provider or os.getenv("AGENT_PROVIDER") or "google").strip().lower()
+        if selected_provider not in PROVIDERS:
+            raise ConfigError(
+                f"AGENT_PROVIDER must be one of {', '.join(PROVIDERS)}, got {selected_provider!r}"
+            )
+
+        if selected_provider == "google":
+            api_key = (
+                os.getenv("GEMINI_API_KEY", "").strip() or os.getenv("GOOGLE_API_KEY", "").strip()
+            )
+            default_model = DEFAULT_GOOGLE_MODEL
+        else:
+            api_key = os.getenv("OPENROUTER_API_KEY", "").strip()
+            default_model = DEFAULT_OPENROUTER_MODEL
+
+        selected_model = (model or os.getenv("AGENT_MODEL") or default_model).strip()
 
         if not fake_model and not api_key:
+            key_hint = "GEMINI_API_KEY" if selected_provider == "google" else "OPENROUTER_API_KEY"
             raise ConfigError(
-                "OPENROUTER_API_KEY is not set. Add it to your environment (or .env), "
+                f"{key_hint} is not set. Add it to your environment (or .env), "
                 "or run with AGENT_FAKE_MODEL=1 for an offline demo."
             )
 
@@ -116,6 +136,7 @@ class Settings:
         return cls(
             topic=clean_topic,
             model=selected_model,
+            provider=selected_provider,
             api_key=api_key,
             max_iterations=iterations,
             max_steps=steps,

@@ -28,7 +28,9 @@ class ResearchState(TypedDict, total=False):
     used_queries: list[str]
     rounds: int
     tool_turns: int
+    write_passes: int
     critique: dict[str, Any]
+    verification: dict[str, Any]
     sources: list[Source]
     final_report: str
     output_path: str

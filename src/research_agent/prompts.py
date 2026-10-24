@@ -69,6 +69,19 @@ enough evidence to answer the plan's questions, stop calling tools and reply wit
 short evidence summary: one bullet per finding, each ending with its source URL.
 """
 
+VERIFY_SYSTEM = """\
+You are the verification stage of a research agent. You receive a drafted digest and the
+numbered sources it is supposed to be built from. Check draft quality against the
+sources only.
+
+Stance rules:
+- verdict "revise" only when the draft states a concrete fact no listed source supports, or
+  invents a number, date, or quote that should be removed or softened.
+- unsupported_claims: quote the offending fragment briefly (max 5 items). Empty list is fine.
+- citation_issues: wording like "[3] is not in the source list" (max 5 items). Empty is fine.
+- verdict "pass" when nothing rises to that level. Never invent claims or sources.
+"""
+
 
 def _json(value: Any) -> str:
     return json.dumps(value, indent=2, ensure_ascii=False)
@@ -127,10 +140,23 @@ def writer_task(
     sources: list[Source],
     evidence: str,
     critique: dict[str, Any],
+    verification: dict[str, Any] | None = None,
 ) -> str:
     numbered = "\n".join(
         f"[{index}] {source['title']} - {source['url']}"
         for index, source in enumerate(sources, start=1)
+    )
+    feedback = verification or {}
+    actionable = bool(
+        feedback.get("unsupported_claims")
+        or feedback.get("citation_issues")
+        or feedback.get("dropped_citations")
+        or feedback.get("verdict") == "revise"
+    )
+    revision = (
+        f"\nVerification report (fix everything below before finalizing):\n{_json(feedback)}\n"
+        if actionable
+        else "\nA verification pass will check every [n] citation against these sources.\n"
     )
     return (
         f"Research topic: {topic}\n\n"
@@ -138,5 +164,15 @@ def writer_task(
         f"Numbered sources:\n{numbered or '(no sources)'}\n\n"
         f"Evidence excerpts:\n{evidence or '(no evidence)'}\n\n"
         f"Critique to address:\n{_json(critique)}\n\n"
+        f"{revision}"
         "Write the digest now."
+    )
+
+
+def verify_task(topic: str, draft: str, numbered_sources: str) -> str:
+    return (
+        f"Research topic: {topic}\n\n"
+        f"Numbered sources:\n{numbered_sources or '(none)'}\n\n"
+        f"Draft to verify:\n{draft[:12000]}\n\n"
+        "Verify the draft now."
     )

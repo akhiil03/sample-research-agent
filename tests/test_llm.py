@@ -10,8 +10,16 @@ def _settings(**overrides):
     return Settings(**defaults)
 
 
-def test_build_llm_uses_millisecond_timeout():
-    model = build_llm(_settings())
+def test_build_llm_google_defaults():
+    model = build_llm(_settings(model="gemini-3.5-flash-lite"))
+    resolved = getattr(model, "model", None) or getattr(model, "model_name", None)
+    assert resolved == "gemini-3.5-flash-lite"
+    assert model.max_retries == 2
+    assert model.temperature == 0.2
+
+
+def test_build_llm_openrouter_keeps_millisecond_timeout():
+    model = build_llm(_settings(provider="openrouter", model="openrouter/free"))
     assert model.request_timeout == 90_000
     assert model.max_retries == 2
     assert model.model_name == "openrouter/free"
