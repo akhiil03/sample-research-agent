@@ -205,6 +205,7 @@ def build_graph(
     tools: list[BaseTool] | None = None,
     checkpointer: InMemorySaver | SqliteSaver | None = None,
     max_iterations: int = 2,
+    max_tool_turns: int = 3,
     output_dir: Path | str = Path("reports"),
     model_name: str = "",
 ) -> Any:
@@ -238,6 +239,7 @@ def build_graph(
             "pending_queries": queries,
             "used_queries": [],
             "rounds": 0,
+            "tool_turns": 0,
             "messages": [AIMessage(content=json.dumps(plan, ensure_ascii=False))],
         }
 
@@ -275,6 +277,7 @@ def build_graph(
             "pending_queries": [],
             "used_queries": used,
             "sources": sources,
+            "tool_turns": int(state.get("tool_turns", 0)) + (1 if response.tool_calls else 0),
         }
         if response.tool_calls:
             update["notes"] = "gathering evidence"
@@ -322,6 +325,7 @@ def build_graph(
             },
             "rounds": rounds,
             "pending_queries": follow_ups,
+            "tool_turns": 0,
         }
 
     def write_node(state: ResearchState) -> dict[str, Any]:
@@ -360,7 +364,8 @@ def build_graph(
         if messages:
             last = messages[-1]
             if isinstance(last, AIMessage) and last.tool_calls:
-                return "tools"
+                if int(state.get("tool_turns", 0)) < max_tool_turns:
+                    return "tools"
         return "critique"
 
     def route_after_critique(state: ResearchState) -> str:
@@ -410,6 +415,7 @@ def run_research(
     llm: BaseChatModel | None = None,
     tools: list[BaseTool] | None = None,
     checkpointer: InMemorySaver | SqliteSaver | None = None,
+    max_tool_turns: int = 3,
 ) -> RunResult:
     """Run the full graph for a topic and return a summary of the result."""
     if llm is None:
@@ -424,6 +430,7 @@ def run_research(
         tools=tools,
         checkpointer=checkpointer,
         max_iterations=settings.max_iterations,
+        max_tool_turns=max_tool_turns,
         output_dir=settings.output_dir,
         model_name=settings.model,
     )
@@ -440,6 +447,7 @@ def run_research(
             "messages": [],
             "sources": [],
             "rounds": 0,
+            "tool_turns": 0,
             "pending_queries": [],
             "used_queries": [],
         },

@@ -67,7 +67,9 @@ class Settings:
         verbose: bool = False,
     ) -> Settings:
         """Build settings from CLI arguments, environment variables, and .env."""
-        load_dotenv()
+        # Only read the .env in the working directory, never one from a parent
+        # directory: tests and CI must not pick up a developer's local secrets.
+        load_dotenv(dotenv_path=Path(".env"))
 
         clean_topic = " ".join(topic.split())
         if not clean_topic:

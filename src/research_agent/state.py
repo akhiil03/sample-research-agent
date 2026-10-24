@@ -27,6 +27,7 @@ class ResearchState(TypedDict, total=False):
     pending_queries: list[str]
     used_queries: list[str]
     rounds: int
+    tool_turns: int
     critique: dict[str, Any]
     sources: list[Source]
     final_report: str

@@ -82,10 +82,11 @@ Exit codes: `0` success, `2` configuration error, `3` run failure, `130` interru
 | `write` | Writes the digest from a bounded evidence brief and a numbered source list, so citations are stable. |
 | `save` | Adds frontmatter, guarantees a Sources section, and writes `reports/<date>-<slug>.md`. |
 
-The loop is bounded in three places: `--max-iterations` (critique rounds),
-`--max-steps` (LangGraph recursion limit), and a hard cap on evidence passed to the writer.
-The critique also cannot stall: if it asks for more research but proposes no follow-up
-queries, the graph proceeds to `write`.
+The loop is bounded in four places: `--max-iterations` (critique rounds),
+`--max-steps` (LangGraph recursion limit), a hard cap of three tool-calling turns per
+research round, and a cap on the evidence passed to the writer. The critique also cannot
+stall: if it asks for more research but proposes no follow-up queries, the graph proceeds
+to `write`.
 
 State is persisted with LangGraph checkpointers. `--checkpointer sqlite` writes to
 `.agent/checkpoints.sqlite`, so a failed or interrupted run can be inspected or resumed
@@ -163,10 +164,12 @@ cron runs can be delayed during peak load. Use `workflow_dispatch` for anything 
 ### About `openrouter/free`
 
 `openrouter/free` auto-routes to a free model that supports tool calling, which keeps the
-demo free. Free tiers are rate-limited (roughly 50 requests/day without account credit) and
-can be slower or less reliable than paid models. The agent makes a handful of calls per run,
-and retries are handled by `langchain-openrouter` plus the search tool. If you hit `429`s,
-switch `AGENT_MODEL` to a paid model id or lower `--max-iterations`.
+demo free. Free tiers are rate-limited (roughly 50 requests/day without account credit), can
+be slower than paid models, and occasionally time out. The agent caps each request at 90
+seconds with two retries, bounds the tool loop, and fails the run cleanly if the provider
+stays unavailable. If you hit `429`s or repeated timeouts, switch `AGENT_MODEL` to a paid
+model id, try another free model from the OpenRouter models page, or lower
+`--max-iterations`.
 
 ## Project layout
 

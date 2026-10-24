@@ -20,8 +20,9 @@ def build_llm(settings: Settings) -> BaseChatModel:
         api_key=settings.api_key,
         temperature=0.2,
         max_tokens=4096,
-        max_retries=3,
-        timeout=120,
+        max_retries=2,
+        # ChatOpenRouter's `timeout` alias is in milliseconds.
+        timeout=90_000,
         app_title="sample-research-agent",
         session_id=settings.thread_id or None,
     )
