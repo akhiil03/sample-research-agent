@@ -321,9 +321,10 @@ def create_app(service: ResearchService | None = None) -> FastAPI:
 
     origins = [
         origin.strip()
-        for origin in os.getenv("WEB_ORIGIN", "http://localhost:3000,http://127.0.0.1:3000").split(
-            ","
-        )
+        for origin in os.getenv(
+            "WEB_ORIGIN",
+            "http://localhost:3000,http://127.0.0.1:3000,https://akhiil03.github.io",
+        ).split(",")
         if origin.strip()
     ]
     app.add_middleware(

@@ -3,6 +3,7 @@
 import Image from "next/image";
 import type { ReactNode } from "react";
 
+import { asset } from "@/lib/assets";
 import type { ResearchRun } from "@/lib/types";
 
 type NodeState = "idle" | "active" | "done" | "failed";
@@ -237,7 +238,7 @@ export function AgentNodeMap({ run }: { run: ResearchRun | null }) {
           >
             <span className="relative z-[1] block h-full w-full overflow-hidden rounded-full border border-accent/30 bg-ink-900">
               <Image
-                src="/agentic-ai.jpg"
+                src={asset("/agentic-ai.jpg")}
                 alt="The research agent"
                 width={735}
                 height={490}

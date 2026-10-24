@@ -1,6 +1,7 @@
 ﻿import type { Health, ResearchRun, RunSummary, StartRunPayload } from "./types";
 
-const BASE_URL = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000").replace(/\/$/, "");
+const configuredUrl = process.env.NEXT_PUBLIC_API_URL?.trim();
+const BASE_URL = (configuredUrl ? configuredUrl : "http://localhost:8000").replace(/\/$/, "");
 
 export class ApiError extends Error {
   status: number;

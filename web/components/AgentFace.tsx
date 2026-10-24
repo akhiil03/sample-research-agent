@@ -1,4 +1,6 @@
-import Image from "next/image";
+﻿import Image from "next/image";
+
+import { asset } from "@/lib/assets";
 
 interface AgentFaceProps {
   size?: number;
@@ -21,7 +23,7 @@ export function AgentFace({ size = 40, active = false }: AgentFaceProps) {
         style={{ width: "100%", height: "100%", borderRadius: "inherit" }}
       >
         <Image
-          src="/agentic-ai.jpg"
+          src={asset("/agentic-ai.jpg")}
           alt=""
           aria-hidden="true"
           width={735}
