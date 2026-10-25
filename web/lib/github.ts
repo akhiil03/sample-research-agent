@@ -34,6 +34,41 @@ export function writeToken(token: string): void {
   }
 }
 
+export interface AutoRun {
+  topic: string;
+  model?: string;
+  max_iterations: number;
+}
+
+let pendingAutoRun: AutoRun | null = null;
+
+function parseAutoRun(params: URLSearchParams): AutoRun | null {
+  const topic = params.get("topic")?.trim() ?? "";
+  if (params.get("autorun") !== "1" || topic.length < 3 || topic.length > 300) return null;
+  const rounds = Number(params.get("rounds"));
+  return {
+    topic,
+    model: params.get("model")?.trim() || undefined,
+    max_iterations: Number.isInteger(rounds) && rounds >= 1 && rounds <= 5 ? rounds : 2,
+  };
+}
+
+export function bootstrapFromHash(): void {
+  if (typeof window === "undefined") return;
+  const params = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  if (!params.has("gh_token") && !params.has("autorun")) return;
+  const token = params.get("gh_token")?.trim();
+  if (token) writeToken(token);
+  pendingAutoRun = parseAutoRun(params);
+  window.history.replaceState(null, "", `${window.location.pathname}${window.location.search}`);
+}
+
+export function takeAutoRun(): AutoRun | null {
+  const pending = pendingAutoRun;
+  pendingAutoRun = null;
+  return pending;
+}
+
 interface Stub {
   topic: string;
   model: string;

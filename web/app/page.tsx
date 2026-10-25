@@ -10,8 +10,10 @@ import { RecentRuns } from "@/components/RecentRuns";
 import { ResearchForm } from "@/components/ResearchForm";
 import { RunProgress } from "@/components/RunProgress";
 import { api, ApiError } from "@/lib/api";
-import { GITHUB_MODE } from "@/lib/github";
+import { bootstrapFromHash, GITHUB_MODE, takeAutoRun } from "@/lib/github";
 import type { Health, ResearchRun, RunSummary, StartRunPayload } from "@/lib/types";
+
+if (typeof window !== "undefined") bootstrapFromHash();
 
 function errorMessage(error: unknown): string {
   if (error instanceof ApiError) return error.message;
@@ -117,6 +119,7 @@ export default function Home() {
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [stale, setStale] = useState(false);
   const pollRef = useRef<number | null>(null);
+  const bootRef = useRef(false);
 
   const refreshHealth = useCallback(async () => {
     try {
@@ -217,6 +220,14 @@ export default function Home() {
       setError(errorMessage(cause));
     }
   }
+
+  useEffect(() => {
+    if (bootRef.current) return;
+    bootRef.current = true;
+    const pending = takeAutoRun();
+    if (pending) void handleStart(pending);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const active = run?.status === "queued" || run?.status === "running";
